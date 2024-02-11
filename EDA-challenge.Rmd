@@ -1,0 +1,172 @@
+---
+title: "EDA-challenge.Rmd"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-02-07"
+---
+```{r}
+library(curl)
+f <- curl("https://raw.githubusercontent.com/difiore/ada-2024-datasets/main/data-wrangling.csv") 
+d <-  read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE) #Loading "data-wrangling.csv" as a tabular data structure named d
+```
+
+```{r}
+names(d) #Looking over the variables it contains
+```
+### **Step 1**
+
+```{r}
+library(tidyverse)
+```
+
+**1. Here, I'm creating a new variable named BSD (body size dimorphism) which is the ratio of average male to female body mass.**
+```{r}
+d$BSD <- d$Body_mass_male_mean/d$Body_mass_female_mean
+```
+**2. Here, I'm creating a new variable named sex_ratio, which is the ratio of the number of adult females to adult males in a typical group.**
+```{r}
+d$sex_ratio <- d$AdultFemale/d$AdultMales
+```
+**3. Here, I'm creating a new variable named DI (for “defensibility index”), which is the ratio of day range length to the diameter of the home range.**
+```{r}
+d$DI <- d$DayLength_km/(2*(sqrt((d$HomeRange_km2)/pi)))
+```
+**4. Here, I'm plotting the relationship between log(day range length) and log(time spent moving) for these primate species overall.**
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+p <- ggplot(data = d, aes( #Building plot object
+  x = log(DayLength_km), #I am log-transforming the variables to reduce the skew of the distribution
+  y = log(Move),
+)) 
+p <- p + 
+  xlab("log(Day Range Length)") +
+  ylab("log(Time Spent Moving)") + #Specifying axis labels
+  geom_point(na.rm = TRUE) + #Creating my scatterplot
+  geom_smooth(method = "lm", se=FALSE, na.rm = TRUE) #Adding a linear regression model
+p #Plotting the object
+```
+
+Looking at these primate species overall, there does not appear to be a strong correlation between time spent moving and day range length. 
+
+Now, I'm plotting the relationship between log(day range length) and log(time spent moving) for these these primate species by family.
+```{r}
+p <- ggplot(data = d, aes(
+  x = log(DayLength_km), 
+  y = log(Move),
+  color = factor(Family) #Coloring points by family
+)) 
+p <- p + 
+  xlab("log(Day Range Length)") +
+  ylab("log(Time Spent Moving)") + 
+  geom_point(na.rm = TRUE) + 
+  facet_wrap(~Family, ncol = 4) + #I am wrapping the data by family (14 total) and arranging these subset plots into 4 columns 
+  theme(legend.position = "none") + #Because of the above, I do not need a legend to clarify the color assignments by family
+  geom_smooth(method = "lm", fullrange = FALSE, se=FALSE, na.rm = TRUE)#I'm going to add a linear regression model to each famiy plot
+p
+```
+
+Within Atelidae, Cebidae, and Hylobatidae, it does appear that there could be a trend for species that spend more time moving to travel farther.
+
+**5. Here, I'm plotting the relationship between log(day range length) and log(mean group size) for these primate species overall.**
+```{r}
+p <- ggplot(data = d, aes(
+  x = log(MeanGroupSize),
+  y = log(DayLength_km),
+)) 
+p <- p + 
+  xlab("log(Mean Group Size)") +
+  ylab("log(Day Range Length)") + 
+  geom_point(na.rm = TRUE) +
+  geom_smooth(method = "lm", se=FALSE, na.rm = TRUE)
+p
+```
+
+Looking at these primate species overall, there does not appear to be a strong correlation between mean group size and day range length. 
+
+Now, I'm plotting the relationship between log(day range length) and log(mean group size) by family.
+```{r}
+p <- ggplot(data = d, aes(
+  x = log(MeanGroupSize), 
+  y = log(DayLength_km),
+  color = factor(Family) 
+)) 
+p <- p + 
+  xlab("log(Mean Group Size)") +
+  ylab("log(Day Range Length)") + 
+  geom_point(na.rm = TRUE) + 
+  facet_wrap(~Family, ncol = 4) +
+  theme(legend.position = "none") +
+  geom_smooth(method = "lm", fullrange = FALSE, se=FALSE, na.rm = TRUE)
+p
+```
+
+Particularly within Atelidae, Cebidae, Cercopithecidae, Hominidae, and Pitheciidae, it does appear that there could be a trend for species that live in larger groups to travel farther.
+
+**6. Here, I'm plotting the relationship between log(body size dimorphism) and log(canine size dimorphism) for these primate species overall.**
+```{r}
+p <- ggplot(data = d, aes(
+  x = log(BSD),
+  y = log(Canine_Dimorphism),
+)) 
+p <- p + 
+  xlab("log(Body Size Dimorphism)") +
+  ylab("log(Canine Size Dimorphism)") + 
+  geom_point(na.rm = TRUE) +
+  geom_smooth(method = "lm", se=FALSE, na.rm = TRUE)
+p
+```
+
+Looking at these primate species overall, it does appear that there could be a trend for species with greater body size dimorphism to also show greater canine size dimorphism.
+
+Now, I'm plotting the relationship between log(body size dimorphism) and log(canine size dimorphism) by family.
+```{r}
+p <- ggplot(data = d, aes(
+  x = log(BSD), 
+  y = log(Canine_Dimorphism),
+  color = factor(Family) 
+)) 
+p <- p + 
+  xlab("log(Body Size Dimorphism)") +
+  ylab("log(Canine Dimorphism)") + 
+  geom_point(na.rm = TRUE) + 
+  facet_wrap(~Family, ncol = 4) +
+  theme(legend.position = "none") +
+  geom_smooth(method = "lm", fullrange = FALSE, se=FALSE, na.rm = TRUE)
+p
+```
+
+Particularly within Cebidae and Cercopithecidae, it does appear that there could be a trend for species that exhibit greater body size dimorphism to also exhibit greater canine dimorphism.
+
+**7. Here, I'm creating a new variable named diet_strategy.**
+```{r}
+d <- d|> mutate(diet_strategy = case_when( #If...
+  Fruit > 50.0  ~ "Frugivore", #...fruit makes up >50% of diet, then designate species as "frugivore"
+  Leaves > 50.0 ~ "Folivore", #...leaves make up >50% of diet, then designate species as "folivore"
+  TRUE ~ "Omnivore", #...neither case is true, designate all others as omnivores
+))
+```
+
+Now I'm creating boxplots of group size for species with different dietary strategies
+```{r}
+p <- ggplot(data = d, aes(x = diet_strategy, y = log(MeanGroupSize))) +
+  geom_boxplot(na.rm = TRUE) + 
+  theme(axis.text.x = element_text(angle = 90)) + #Specifying axis labels
+  ylab("log(Mean Group Size)") + 
+  xlab("Diet Strategy") 
+p
+```
+
+The mean group size for all frugivore taxa is less than the mean group size for all folivore taxa.
+
+**8.** 
+```{r}
+(a <- mutate(d, Binomial = paste(Genus, Species, sep = ",")) |> #creating a new variable, Binomial, which is a concatenation of Genus and Species
+  select(Binomial, Family, Brain_Size_Species_Mean, Body_mass_male_mean) |> #Trimming the data frame to only include these variables
+  group_by(Family) |> #Grouping by family
+  summarise(avgBrain_Size_Species_Mean = mean(Brain_Size_Species_Mean, na.rm = TRUE), avgBody_mass_male_mean = mean(Brain_Size_Species_Mean, na.rm = TRUE)) |> #Calculating the average value for Brain_Size_Species_Mean and Body_mass_male_mean by Family
+  arrange(avgBrain_Size_Species_Mean)) #Arranging by increasing average brain size
+```
+
